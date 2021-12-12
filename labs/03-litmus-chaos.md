@@ -80,17 +80,23 @@ aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --chang
 kubectl set env deployment chaos-litmus-server -n litmus --containers="graphql-server" INGRESS="true"
 ```
 
-11. Create ingress manifest for litmus
+11. Deploy ingress for litmus
 ```
-tee -a ~/litmus-ingress.yaml> /dev/null <<EOT
+cat <<EOT | kubectl apply -f -
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/rewrite-target: /\$1
+    cert-manager.io/cluster-issuer: letsencrypt
   name: litmus-ingress
+  namespace: litmus
 spec:
   ingressClassName: nginx
+  tls:
+    - hosts:
+        - litmus.$DOMAIN
+      secretName: litmuspreview-tls-secret
   rules:
     - host: litmus.$DOMAIN
       http:
@@ -108,7 +114,95 @@ spec:
 EOT
 ```
 
-12. Apply litmus ingress
+12. Deploy podMonitor for collecting chaos-exporter metrics
 ```
-kubectl apply -f ~/litmus-ingress.yaml -n litmus
+cat <<EOT | kubectl apply -f -
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: chaos-exporter-monitor
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: chaos-exporter
+  namespaceSelector:
+    matchNames:
+      - litmus
+  podMetricsEndpoints:
+    - port: tcp
+    - interval: 1s
+      metricRelabelings:
+        - targetLabel: instance
+          replacement: 'chaos-exporter-service'
+EOT
 ```
+
+## Setup Litmus
+
+1. Open your browser and browse to: https://litmus.$DOMAIN
+  ![initial-login](/images/litmus-setup.png)
+
+2. Login using the following credentials:
+  - Username: admin
+  - Password: litmus
+
+3. Create your own password to finish setup
+  ![reset-password](/images/setup-password.png)
+
+4. After the initial setup a `Chaos Agent` will be deployed into the cluster. This agent is what will perform the experiments in your cluster.
+  - You can check the status of your `Chaos Agents` in the Litmus UI
+  ![chaos-agent](/images/chaos-agent.png)
+
+## Configure Prometheus as a Data Source for gathering Metrics
+
+1. Browse to https://litmus.$DOMAIN, login and go to Observability > Data Sources
+  ![data-source-1](/images/data-source-1.png)
+
+2. Click on `Add Data Source` and configure as follows:
+  ![data-source-2](/images/data-source-2.png)
+
+3. In the next form leave all the defaults and click on `Save Changes`
+  ![data-source-3](/images/data-source-3.png)
+
+4. Once the `Data Source` is configured browse to Observability > Overview and click on `Create Dashboard`
+  ![data-source-4](/images/data-source-4.png)
+
+5. Select the `Node metrics` Dashboard
+  ![data-source-5](/images/data-source-5.png)
+
+6. Configure as follows
+  ![data-source-6](/images/data-source-6.png)
+
+7. In the next form, select all metrics
+  ![data-source-7](/images/data-source-7.png)
+
+8. In the next screen there is a problem with the promql query. to fix it change from `instance:node_cpu_utilisation:rate1m*100` to `instance:node_cpu_utilisation:rate5m*100` and click on `Save Changes`
+  ![data-source-8](/images/data-source-7.png)
+
+## Configure the Experiment
+
+- In this experiment we are going to use some of the Built-in experiments of the `Litmus Chaos Hub`:
+  - `Pod CPU Hog`: Consumes CPU resources on the application container
+  - `Pod Memory Hog`: Consumes Memory resources on the application container
+  - `Node Taint`: Taints the target node
+  - `Pod Network Corruption`: Injects Network Packet Corruption into Application Pod
+
+- The hypothesis is that the Application will be able to whitstand all the above conditions without any impact to the end users.
+
+- To define the `Steady State` of the application we know that if a user browses to `https://pacman.seladevops.com` the application should return Https status code 2--
+
+1. Browse to litmus.$DOMAIN, go to `Litmus Workflows` and click on the `Schedule a Worflow` button.
+
+2. Select the `Self-Agent` and click on `Next`
+
+3. Select the `Import a workflow using YAML` and upload the chaos experiment YAML configuration located in this repository at `sdp-chaos/litmus/sdp-chaos.yaml` and click on `Next`
+
+4. Give a name and a description to your experiment and click on `Next`
+
+5. Select the `Schedule Now` option and click on `Next`
+
+6. Verify the experiment and click on `Finish`
+

@@ -19,8 +19,8 @@ eksctl completion bash >> ~/.bash_completion
 
 3. Define some variables for the cluster config
 ```
-CLUSTER_NAME=chaos
-AWS_REGION=eu-central-1
+CLUSTER_NAME=chaos-failover
+AWS_REGION=ap-southeast-1
 
 ```
 
@@ -45,7 +45,7 @@ EOT
 
 5. Create cluster
 ```
-eksctl create cluster -f ~/cluster-config.yaml
+eksctl create cluster -f ~/cluster-config-failover.yaml
 ```
 
 6. Make sure your kubectl is configured with the new cluster as the current-context
@@ -74,5 +74,48 @@ helm repo update
 
 2. Deploy the kube-prometheus-stack
 ```
-helm install prometheus prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
+helm install monitoring prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
 ```
+
+### Cert Manager
+
+1. Add jetstack repository to your Helm repositories
+```
+helm repo add jetstack https://charts.jetstack.io
+```
+
+2. Create `cert-manager` namespace
+```
+kubectl create namespace cert-manager
+```
+
+3. Install cert-manager
+```
+helm install cert-manager jetstack/cert-manager --namespace cert-manager --set installCRDs=true
+```
+
+6. Configure a variable with your email
+```
+EMAIL=jonyjalfon94@gmail.com
+```
+
+5. Deploy a cluster issuer to get valid ssl certificates from Letsencrypt
+```
+cat <<EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+   name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: $EMAIL
+    privateKeySecretRef:
+      name: letsencrypt
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+EOF
+```
+

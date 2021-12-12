@@ -24,15 +24,15 @@ kubectl apply -f sdp-chaos/demo-app/mongo -n mongo
 kubectl apply -f sdp-chaos/demo-app/pacman -n pacman
 ```
 
-4. Get pacman service LoadBalancer hostname
-```
-PACMAN_LB_HOSTNAME=$(kubectl -n pacman get svc pacman -o json | jq -r .status.loadBalancer.ingress[0].hostname)
-```
-
-5. Define some variables for the route53 configuration file
+4. Define some variables for the ingress and CNAME configuration
 ```
 DOMAIN=seladevops.com
 HOSTED_ZONE_ID=Z217CC5WGOWD9G
+```
+
+5. Get ingress controller LoadBalancer hostname
+```
+LB_HOSTNAME=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o json | jq -r .status.loadBalancer.ingress[0].hostname)
 ```
 
 6. Create route53 configuration file
@@ -49,7 +49,7 @@ tee -a ~/pacman-cname.json > /dev/null <<EOT
             "TTL":300,
             "ResourceRecords":[
                {
-                  "Value":"${PACMAN_LB_HOSTNAME}"
+                  "Value":"${LB_HOSTNAME}"
                }
             ]
          }
@@ -62,6 +62,37 @@ EOT
 7. Create CNAME record in your Route53 Hosted Zone
 ```
 aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://~/pacman-cname.json
+```
+
+8. Create ingress for the pacman demo app
+```
+cat <<EOT | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pacman-ingress
+  namespace: pacman
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - pacman.$DOMAIN
+      secretName: pacman-tls-secret
+  rules:
+  - host: pacman.$DOMAIN
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pacman
+            port:
+              number: 80
+EOT
 ```
 
 
@@ -198,10 +229,10 @@ aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --chang
   - pacman.$DOMAIN
 
 2. In the browser running kubeinvaders you can start the experiment automatically by clicking on the start button
-  [kubeinvaders](/images/kubeinvaders.png)
+  ![kubeinvaders](/images/kubeinvaders.png)
 
 3. In the browser running kubeops you can write `namespace=pacman` to mark in green all the pods from the pacman namespace
-  [kubeops](/images/kubeops.png)
+  ![kubeops](/images/kubeops.png)
 
 4. In the browser running pacman, start playing the game and you will see that even tho we are deleting the pods, the end users playing the game do not experience any downtime
-  [pacman](/images/pacman.png)
+  ![pacman](/images/pacman.png)
