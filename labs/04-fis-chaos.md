@@ -5,6 +5,7 @@ In this lab we will perform a Chaos Experiment using the AWS Fault Injection Sim
 ## Configure FIS Role
 
 1. Navigate to the IAM console and create a new IAM policy. On the “Create Policy” page select the JSON tab
+  ![fis-1](/images/fis-1.png)
 
 2. Paste the following policy. Take the time to look at how broad these permissions are:
 ```
@@ -107,15 +108,16 @@ In this lab we will perform a Chaos Experiment using the AWS Fault Injection Sim
 
 4. Navigate to the IAM console page and create a new Role.
   - On the “Select type of trusted entity” page AWS FIS does not exist as a trusted service yet. We shall add an account trust as a placeholder and replace this with AWS FIS later. Select “Another AWS Account” and add the current account number. You can find the AWS account number in the drop-down menu at the top right of the page as shown:
-  ![data-source-1](/images/data-source-1.png)
+  ![fis-2](/images/fis-2.png)
 
 5. Click on `Next: permissions`. On the “Attach permissions” page search for the FisWorkshopServicePolicy we just created and check the box beside it to attach it to the role.
+  ![fis-3](/images/fis-3.png)
 
 6. Click on Next: Tags and add any Tags you would like for this role.
 7. Click on Next: Review and save the role name as FisWorkshopServiceRole. Add any description you would like for this role.
 8. Complete the Role creation by clicking on Create role.
 9. Back in the IAM Roles page, find and edit the FisWorkshopServiceRole. Select “Trust relationships” and the “Edit trust relationship” button.
-  !IMAGE
+  ![fis-4](/images/fis-4.png)
 
 10. Replace the policy document with the following:
 ```
@@ -142,26 +144,26 @@ In this lab we will perform a Chaos Experiment using the AWS Fault Injection Sim
 ## Create Experiment Template
 
 - Steady State:
-  - The application should have at least 20 pods at all times
+  - The application should have at least 10 pods at all times
   - The application should always return Http 200 when a user browses to it's URL
 
 - Hypothesis: 
-  - If there's an outage in the region `eu-central-1` the Application will have downtime and users will not be able to access it as the cluster operates only in that region and there is no `failover` mechanism.
+  - If there's an outage in the region `eu-central-1` the `failover` mechanism will be activated and all traffic will be redirected to the application running on a cluster in `ap-southeast-1`
 
 - Experiment:
   - In order to simulate a region outage we are going to terminate all instances of the EKS cluster.
 
 1. Configure some variables for creating the FIS Experiment template configuration file
 ```
-NODEGROUP_ARN=
-NODEGROUP_NAME=
-FIS_ROLE_ARN=
+NODEGROUP_ARN=arn:aws:eks:eu-central-1:027065296145:nodegroup/chaos/nodegroup/6ebecdb4-3ccd-a051-95c9-b9d35af0b01e
+NODEGROUP_NAME=nodegroup
+FIS_ROLE_ARN=arn:aws:iam::027065296145:role/FIS
 EXPERIMENT_TEMPLATE_NAME=sdp-chaos-cli
 ```
 
 2. Create Experiment template configuration file
 ```
-tee -a ~/FIS-experiment-template.json > /dev/null <<EOT
+tee -a ~/fis-experiment-template.json > /dev/null <<EOT
 {
     "description": "Terminate a region by deleting all the nodes of the cluster located in eu-central-1",
     "targets": {
@@ -196,4 +198,24 @@ tee -a ~/FIS-experiment-template.json > /dev/null <<EOT
     }
 }
 EOT
+```
+
+3. Create Experiment template
+```
+aws fis create-experiment-template --cli-input-json file://~/fis-experiment-template.json --region eu-central-1
+```
+
+4. Get Experiment template ID
+```
+aws fis list-experiment-templates --region eu-central-1
+```
+
+5. Run the experiment
+```
+aws fis start-experiment --region eu-central-1 --experiment-template-id EXPERIMENT_TEMPLATE_ID --tags Name=sdp-pacman-chaos-1 | jq '.experiment.id'
+```
+
+6. Using the returned id field you can check on the outcome of the experiment
+```
+aws fis get-experiment --region eu-central-1 --id YOUR_EXPERIMENT_ID_HERE
 ```

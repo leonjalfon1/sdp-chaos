@@ -192,17 +192,22 @@ EOT
 
 - The hypothesis is that the Application will be able to whitstand all the above conditions without any impact to the end users.
 
-- To define the `Steady State` of the application we know that if a user browses to `https://pacman.seladevops.com` the application should return Https status code 2--
+- To define the `Steady State` of the application we know that if a user browses to `https://pacman.seladevops.com` the application should return Https status code 200
 
 1. Browse to litmus.$DOMAIN, go to `Litmus Workflows` and click on the `Schedule a Worflow` button.
+  ![experiment](/images/experiment-1.png)
 
 2. Select the `Self-Agent` and click on `Next`
+  ![experiment](/images/experiment-2.png)
 
 3. Select the `Import a workflow using YAML` and upload the chaos experiment YAML configuration located in this repository at `sdp-chaos/litmus/sdp-chaos.yaml` and click on `Next`
+  ![experiment](/images/experiment-6.png)
 
 4. Give a name and a description to your experiment and click on `Next`
+  ![experiment](/images/experiment-3.png)
 
 5. Select the `Schedule Now` option and click on `Next`
+  ![experiment](/images/experiment-4.png)
 
 6. Verify the experiment and click on `Finish`
-
+  ![experiment](/images/experiment-5.png)
