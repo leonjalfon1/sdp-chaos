@@ -180,7 +180,7 @@ EOT
   ![data-source-7](/images/data-source-7.png)
 
 8. In the next screen there is a problem with the promql query. to fix it change from `instance:node_cpu_utilisation:rate1m*100` to `instance:node_cpu_utilisation:rate5m*100` and click on `Save Changes`
-  ![data-source-8](/images/data-source-7.png)
+  ![data-source-8](/images/data-source-8.png)
 
 ## Configure the Experiment
 
