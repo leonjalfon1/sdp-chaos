@@ -42,8 +42,8 @@ LB_HOSTNAME=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o json 
 
 7. Define some variables for the route53 configuration file
 ```
-DOMAIN=seladevops.com
-HOSTED_ZONE_ID=Z217CC5WGOWD9G
+DOMAIN=<YOUR-DOMAIN>
+HOSTED_ZONE_ID=<YOUR-HOSTED-ZONE-ID>
 ```
 
 8. Create route53 configuration file
@@ -187,12 +187,12 @@ EOT
 - In this experiment we are going to use some of the Built-in experiments of the `Litmus Chaos Hub`:
   - `Pod CPU Hog`: Consumes CPU resources on the application container
   - `Pod Memory Hog`: Consumes Memory resources on the application container
-  - `Node Taint`: Taints the target node
+  - `Pod Delete`: Pod delete contains chaos to disrupt state of kubernetes resources.
   - `Pod Network Corruption`: Injects Network Packet Corruption into Application Pod
 
 - The hypothesis is that the Application will be able to whitstand all the above conditions without any impact to the end users.
 
-- To define the `Steady State` of the application we know that if a user browses to `https://pacman.seladevops.com` the application should return Https status code 200
+- To define the `Steady State` of the application we know that if a user browses to `https://pacman.$DOMAIN` the application should return Http status code 200
 
 1. Browse to litmus.$DOMAIN, go to `Litmus Workflows` and click on the `Schedule a Worflow` button.
   ![experiment](/images/experiment-1.png)
@@ -200,8 +200,9 @@ EOT
 2. Select the `Self-Agent` and click on `Next`
   ![experiment](/images/experiment-2.png)
 
-3. Select the `Import a workflow using YAML` and upload the chaos experiment YAML configuration located in this repository at `sdp-chaos/litmus/sdp-chaos.yaml` and click on `Next`
+3. Select the option `Import a workflow using YAML` and upload the chaos experiment YAML configuration located in this repository at `sdp-chaos/litmus/sdp-chaos.yaml` and click on `Next`
   ![experiment](/images/experiment-6.png)
+  - For more info on how to configure experiments from `Litmus ChaosHub` refer to the section below.
 
 4. Give a name and a description to your experiment and click on `Next`
   ![experiment](/images/experiment-3.png)
@@ -211,3 +212,49 @@ EOT
 
 6. Verify the experiment and click on `Finish`
   ![experiment](/images/experiment-5.png)
+
+## Using Litmus ChaosHub experiments
+
+One of the features of Litmus Chaos is that it has an official `ChaosHub` with experiments that are ready to use with minimal configuration.
+In this Section we will configure a workflow with an experiment from the `Litmus ChaosHub`
+
+1. Browse to litmus.$DOMAIN, go to `Litmus Workflows` and click on the `Schedule a Worflow` button.
+  ![experiment](/images/experiment-1.png)
+
+2. Select the `Self-Agent` and click on `Next`
+  ![experiment](/images/experiment-2.png)
+
+3. Select the option `Create a new workflow using the experiments from ChaosHubs`, choose `Litmus ChaosHub` from the drop down list and click `Next`
+  ![chaos-hub](/images/chaos-hub-1.png)
+
+4. Give a name and a description to your experiment and click on `Next`
+  ![chaos-hub](/images/chaos-hub-2.png)
+
+5. Click on the `Add a new experiment` button and choose your experiment. In this demo we will use `generic/pod-delete`.
+  ![chaos-hub](/images/chaos-hub-3.png)
+
+6. After the experiment has been added click on the edit button to configure it
+  ![chaos-hub](/images/chaos-hub-4.png)
+
+7. In general you can leave the defaults and click `Next`
+  ![chaos-hub](/images/chaos-hub-11.png)
+
+8. Configure the target application with the drop down lists and click `Next`
+  ![chaos-hub](/images/chaos-hub-5.png)
+
+9. In order to see if an experiment is succesful or not we need to let Litmus know what is the `Steady State`. To do this we configure `probes`. For this experiment we will use a continuous probe which checks that issuing a request to the application returns HTTP code 200. Click on `Add a new probe` and configure like below:
+  ![chaos-hub](/images/chaos-hub-6.png)
+
+10. Tune the experiment according to your needs. In this case we want to delete 60 percent of the Pods
+  ![chaos-hub](/images/chaos-hub-7.png)
+
+11. You can add more experiments by clicking again on `Add a new experiment`. When you are done click on `Next` and adjust the weight of each experiment. The final score of the experiment depends on these values.
+  ![chaos-hub](/images/chaos-hub-8.png)
+
+12. Select the `Schedule Now` option and click on `Next`.
+  ![chaos-hub](/images/chaos-hub-9.png)
+
+13. Verify the experiment and click on `Finish`
+  ![chaos-hub](/images/chaos-hub-10.png)
+
+- For more experiments and docs on how to use each one of them visit https://hub.litmuschaos.io/

@@ -2,6 +2,9 @@
 
 In this lab we will perform a Chaos Experiment using the AWS Fault Injection Simulator service.
 
+- **NOTE:** For this Lab we created another cluster in a different region and configured DNS failover in order to make the application resilient.
+  - For more info on Route53 DNS failover: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/dns-failover-how-to.html
+
 ## Configure FIS Role
 
 1. Navigate to the IAM console and create a new IAM policy. On the “Create Policy” page select the JSON tab
@@ -155,10 +158,10 @@ In this lab we will perform a Chaos Experiment using the AWS Fault Injection Sim
 
 1. Configure some variables for creating the FIS Experiment template configuration file
 ```
-NODEGROUP_ARN=arn:aws:eks:eu-central-1:027065296145:nodegroup/chaos/nodegroup/6ebecdb4-3ccd-a051-95c9-b9d35af0b01e
+NODEGROUP_ARN=<NODEGROUP-ARN>
 NODEGROUP_NAME=nodegroup
-FIS_ROLE_ARN=arn:aws:iam::027065296145:role/FIS
-EXPERIMENT_TEMPLATE_NAME=sdp-chaos-cli
+FIS_ROLE_ARN=<FIS-ROLE-ARN>
+EXPERIMENT_TEMPLATE_NAME=sdp-chaos
 ```
 
 2. Create Experiment template configuration file

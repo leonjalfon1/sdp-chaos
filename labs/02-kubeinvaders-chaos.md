@@ -26,8 +26,8 @@ kubectl apply -f sdp-chaos/demo-app/pacman -n pacman
 
 4. Define some variables for the ingress and CNAME configuration
 ```
-DOMAIN=seladevops.com
-HOSTED_ZONE_ID=Z217CC5WGOWD9G
+DOMAIN=<YOUR-DOMAIN>
+HOSTED_ZONE_ID=<YOUR-HOSTED-ZONE-ID>
 ```
 
 5. Get ingress controller LoadBalancer hostname
@@ -120,8 +120,8 @@ LB_HOSTNAME=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o json 
 
 6. Define some variables for the route53 configuration file
 ```
-DOMAIN=seladevops.com
-HOSTED_ZONE_ID=Z217CC5WGOWD9G
+DOMAIN=<YOUR-DOMAIN>
+HOSTED_ZONE_ID=<YOUR-HOSTED-ZONE-ID>
 ```
 
 5. Create route53 configuration file
@@ -164,6 +164,9 @@ helm upgrade --install kubeinvaders --set-string target_namespace=$NAMESPACES \
 ingressClassName: nginx
 ```
 
+7. (Optional) To get an SSL certificate using cert-manager include the annotation `cert-manager.io/cluster-issuer: letsencrypt` and to enforce https `nginx.ingress.kubernetes.io/force-ssl-redirect: "true"` and include a tls section in the ingress configuration (cert-manager will create the secret).
+  - For reference refer to the ingress configuration of pacman
+
 ## Deploy kube-ops-view
 
 1. clone the kube-ops-view repo and cd into it
@@ -172,24 +175,21 @@ git clone https://codeberg.org/hjacobs/kube-ops-view.git
 cd kube-ops-view
 ```
 
-2. Customize the manifests located in the deploy folder according to your needs. In this lab we will be deploying the service as a load balanccer.
-
-
-3. Deploy kube-ops-view
+2. Deploy kube-ops-view
 ```
 kubectl create ns kube-ops-view
 kubectl apply -k deploy -n kube-ops-view
 ```
 
-4. Get  controller LoadBalancer hostname
+4. Get ingress controller LoadBalancer hostname
 ```
-KUBE_OPS_VIEW_LB_HOSTNAME=$(kubectl -n kube-ops-view get svc kube-ops-view -o json | jq -r .status.loadBalancer.ingress[0].hostname)
+LB_HOSTNAME=$(kubectl -n ingress-nginx get svc ingress-nginx-controller -o json | jq -r .status.loadBalancer.ingress[0].hostname)
 ```
 
 6. Define some variables for the route53 configuration file
 ```
-DOMAIN=seladevops.com
-HOSTED_ZONE_ID=Z217CC5WGOWD9G
+DOMAIN=<YOUR-DOMAIN>
+HOSTED_ZONE_ID=<YOUR-HOSTED-ZONE-ID>
 ```
 
 5. Create route53 configuration file
@@ -206,7 +206,7 @@ tee -a ~/kubeops-cname.json > /dev/null <<EOT
             "TTL":300,
             "ResourceRecords":[
                {
-                  "Value":"${KUBE_OPS_VIEW_LB_HOSTNAME}"
+                  "Value":"${LB_HOSTNAME}"
                }
             ]
          }
@@ -219,6 +219,37 @@ EOT
 6. Create CNAME record in your Route53 Hosted Zone
 ```
 aws route53 change-resource-record-sets --hosted-zone-id $HOSTED_ZONE_ID --change-batch file://~/kubeops-cname.json
+```
+
+8. Create ingress for kubeops-view
+```
+cat <<EOT | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubeops-view-ingress
+  namespace: kube-ops-view
+  annotations:
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - kubeops.$DOMAIN
+      secretName: kubeops-tls-secret
+  rules:
+  - host: kubeops.$DOMAIN
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: kube-ops-view
+            port:
+              number: 80
+EOT
 ```
 
 # Run Chaos Experiment

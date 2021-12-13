@@ -19,7 +19,7 @@ eksctl completion bash >> ~/.bash_completion
 
 3. Define some variables for the cluster config
 ```
-CLUSTER_NAME=chaos-failover
+CLUSTER_NAME=chaos
 AWS_REGION=ap-southeast-1
 
 ```
@@ -45,7 +45,7 @@ EOT
 
 5. Create cluster
 ```
-eksctl create cluster -f ~/cluster-config-failover.yaml
+eksctl create cluster -f ~/cluster-config.yaml
 ```
 
 6. Make sure your kubectl is configured with the new cluster as the current-context
@@ -96,7 +96,7 @@ helm install cert-manager jetstack/cert-manager --namespace cert-manager --set i
 
 6. Configure a variable with your email
 ```
-EMAIL=jonyjalfon94@gmail.com
+EMAIL=<YOUR-EMAIL>
 ```
 
 5. Deploy a cluster issuer to get valid ssl certificates from Letsencrypt

@@ -1,8 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: sdp-experiment-1639181137
+  name: sdp-chaos-test-with-pod-delete-1639331490
   namespace: litmus
+  labels:
+    subject: sdp-chaos-test-with-pod-delete_litmus
 spec:
   arguments:
     parameters:
@@ -18,14 +20,16 @@ spec:
       steps:
         - - name: install-chaos-experiments
             template: install-chaos-experiments
-        - - name: node-taint
-            template: node-taint
-        - - name: pod-memory-hog
-            template: pod-memory-hog
-        - - name: pod-network-corruption
-            template: pod-network-corruption
+        - - name: pod-delete
+            template: pod-delete
         - - name: pod-cpu-hog
             template: pod-cpu-hog
+        - - name: pod-network-corruption
+            template: pod-network-corruption
+        - - name: pod-memory-hog
+            template: pod-memory-hog
+        - - name: revert-chaos
+            template: revert-chaos
     - name: install-chaos-experiments
       inputs:
         artifacts:
@@ -107,21 +111,21 @@ spec:
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/version: 2.2.0
-          - name: pod-memory-hog
-            path: /tmp/pod-memory-hog.yaml
+          - name: pod-delete
+            path: /tmp/pod-delete.yaml
             raw:
               data: >
                 apiVersion: litmuschaos.io/v1alpha1
 
                 description:
                   message: |
-                    Injects memory consumption on pods belonging to an app deployment
+                    Deletes a pod belonging to a deployment/statefulset/daemonset
                 kind: ChaosExperiment
 
                 metadata:
-                  name: pod-memory-hog
+                  name: pod-delete
                   labels:
-                    name: pod-memory-hog
+                    name: pod-delete
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: 2.2.0
@@ -131,12 +135,13 @@ spec:
                     permissions:
                       - apiGroups:
                           - ""
-                          - batch
                           - apps
                           - apps.openshift.io
                           - argoproj.io
+                          - batch
                           - litmuschaos.io
                         resources:
+                          - deployments
                           - jobs
                           - pods
                           - pods/log
@@ -164,15 +169,95 @@ spec:
                     imagePullPolicy: Always
                     args:
                       - -c
-                      - ./experiments -name pod-memory-hog
+                      - ./experiments -name pod-delete
+                    command:
+                      - /bin/bash
+                    env:
+                      - name: TOTAL_CHAOS_DURATION
+                        value: "15"
+                      - name: RAMP_TIME
+                        value: ""
+                      - name: FORCE
+                        value: "true"
+                      - name: CHAOS_INTERVAL
+                        value: "5"
+                      - name: PODS_AFFECTED_PERC
+                        value: ""
+                      - name: LIB
+                        value: litmus
+                      - name: TARGET_PODS
+                        value: ""
+                      - name: SEQUENCE
+                        value: parallel
+                    labels:
+                      name: pod-delete
+                      app.kubernetes.io/part-of: litmus
+                      app.kubernetes.io/component: experiment-job
+                      app.kubernetes.io/version: 2.2.0
+          - name: pod-cpu-hog
+            path: /tmp/pod-cpu-hog.yaml
+            raw:
+              data: >
+                apiVersion: litmuschaos.io/v1alpha1
+
+                description:
+                  message: |
+                    Injects cpu consumption on pods belonging to an app deployment
+                kind: ChaosExperiment
+
+                metadata:
+                  name: pod-cpu-hog
+                  labels:
+                    name: pod-cpu-hog
+                    app.kubernetes.io/part-of: litmus
+                    app.kubernetes.io/component: chaosexperiment
+                    app.kubernetes.io/version: 2.2.0
+                spec:
+                  definition:
+                    scope: Namespaced
+                    permissions:
+                      - apiGroups:
+                          - ""
+                          - batch
+                          - apps
+                          - apps.openshift.io
+                          - argoproj.io
+                          - litmuschaos.io
+                        resources:
+                          - jobs
+                          - pods
+                          - pods/log
+                          - events
+                          - replicationcontrollers
+                          - deployments
+                          - statefulsets
+                          - daemonsets
+                          - replicasets
+                          - deploymentconfigs
+                          - rollouts
+                          - pods/exec
+                          - chaosengines
+                          - chaosexperiments
+                          - chaosresults
+                        verbs:
+                          - create
+                          - list
+                          - get
+                          - patch
+                          - update
+                          - delete
+                          - deletecollection
+                    image: litmuschaos/go-runner:2.2.0
+                    imagePullPolicy: Always
+                    args:
+                      - -c
+                      - ./experiments -name pod-cpu-hog
                     command:
                       - /bin/bash
                     env:
                       - name: TOTAL_CHAOS_DURATION
                         value: "60"
-                      - name: MEMORY_CONSUMPTION
-                        value: "500"
-                      - name: NUMBER_OF_WORKERS
+                      - name: CPU_CORES
                         value: "1"
                       - name: PODS_AFFECTED_PERC
                         value: ""
@@ -188,12 +273,12 @@ spec:
                         value: docker
                       - name: SOCKET_PATH
                         value: /var/run/docker.sock
-                      - name: SEQUENCE
-                        value: parallel
                       - name: TARGET_PODS
                         value: ""
+                      - name: SEQUENCE
+                        value: parallel
                     labels:
-                      name: pod-memory-hog
+                      name: pod-cpu-hog
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/runtime-api-usage: "true"
@@ -293,21 +378,21 @@ spec:
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/runtime-api-usage: "true"
                       app.kubernetes.io/version: latest
-          - name: pod-cpu-hog
-            path: /tmp/pod-cpu-hog.yaml
+          - name: pod-memory-hog
+            path: /tmp/pod-memory-hog.yaml
             raw:
               data: >
                 apiVersion: litmuschaos.io/v1alpha1
 
                 description:
                   message: |
-                    Injects cpu consumption on pods belonging to an app deployment
+                    Injects memory consumption on pods belonging to an app deployment
                 kind: ChaosExperiment
 
                 metadata:
-                  name: pod-cpu-hog
+                  name: pod-memory-hog
                   labels:
-                    name: pod-cpu-hog
+                    name: pod-memory-hog
                     app.kubernetes.io/part-of: litmus
                     app.kubernetes.io/component: chaosexperiment
                     app.kubernetes.io/version: 2.2.0
@@ -326,7 +411,6 @@ spec:
                           - jobs
                           - pods
                           - pods/log
-                          - events
                           - replicationcontrollers
                           - deployments
                           - statefulsets
@@ -335,6 +419,7 @@ spec:
                           - deploymentconfigs
                           - rollouts
                           - pods/exec
+                          - events
                           - chaosengines
                           - chaosexperiments
                           - chaosresults
@@ -350,13 +435,15 @@ spec:
                     imagePullPolicy: Always
                     args:
                       - -c
-                      - ./experiments -name pod-cpu-hog
+                      - ./experiments -name pod-memory-hog
                     command:
                       - /bin/bash
                     env:
                       - name: TOTAL_CHAOS_DURATION
                         value: "60"
-                      - name: CPU_CORES
+                      - name: MEMORY_CONSUMPTION
+                        value: "500"
+                      - name: NUMBER_OF_WORKERS
                         value: "1"
                       - name: PODS_AFFECTED_PERC
                         value: ""
@@ -372,99 +459,44 @@ spec:
                         value: docker
                       - name: SOCKET_PATH
                         value: /var/run/docker.sock
-                      - name: TARGET_PODS
-                        value: ""
                       - name: SEQUENCE
                         value: parallel
+                      - name: TARGET_PODS
+                        value: ""
                     labels:
-                      name: pod-cpu-hog
+                      name: pod-memory-hog
                       app.kubernetes.io/part-of: litmus
                       app.kubernetes.io/component: experiment-job
                       app.kubernetes.io/runtime-api-usage: "true"
                       app.kubernetes.io/version: latest
       container:
         args:
-          - kubectl apply -f /tmp/node-taint.yaml -n
-            {{workflow.parameters.adminModeNamespace}} | kubectl apply -f
-            /tmp/pod-memory-hog.yaml -n
-            {{workflow.parameters.adminModeNamespace}} | kubectl apply -f
-            /tmp/pod-network-corruption.yaml -n
+          - kubectl apply -f /tmp/pod-delete.yaml -n
             {{workflow.parameters.adminModeNamespace}} | kubectl apply -f
             /tmp/pod-cpu-hog.yaml -n {{workflow.parameters.adminModeNamespace}}
-            |  sleep 30
+            | kubectl apply -f /tmp/pod-network-corruption.yaml -n
+            {{workflow.parameters.adminModeNamespace}} | kubectl apply -f
+            /tmp/pod-memory-hog.yaml -n
+            {{workflow.parameters.adminModeNamespace}} |  sleep 30
         command:
           - sh
           - -c
         image: litmuschaos/k8s:latest
-    - name: node-taint
+    - name: pod-delete
       inputs:
         artifacts:
-          - name: node-taint
-            path: /tmp/chaosengine-node-taint.yaml
-            raw:
-              data: >
-                apiVersion: litmuschaos.io/v1alpha1
-
-                kind: ChaosEngine
-
-                metadata:
-                  namespace: "{{workflow.parameters.adminModeNamespace}}"
-                  generateName: node-taint
-                  labels:
-                    instance_id: 63962d14-0ac4-45c4-945b-13589651c5aa
-                    context: node-taint_litmus
-                spec:
-                  jobCleanUpPolicy: retain
-                  engineState: active
-                  auxiliaryAppInfo: ""
-                  chaosServiceAccount: litmus-admin
-                  experiments:
-                    - name: node-taint
-                      spec:
-                        components:
-                          env:
-                            - name: TOTAL_CHAOS_DURATION
-                              value: "60"
-                            - name: TARGET_NODE
-                              value: ip-192-168-63-124.eu-central-1.compute.internal
-                            - name: TAINTS
-                              value: node.kubernetes.io/unreachable:NoExecute
-                        probe:
-                          - name: appAlive
-                            type: httpProbe
-                            mode: Continuous
-                            runProperties:
-                              probeTimeout: 5
-                              retry: 5
-                              interval: 3
-                              stopOnFailure: false
-                            httpProbe/inputs:
-                              url: https://pacman.seladevops.com
-                              method:
-                                get:
-                                  criteria: ==
-                                  responseCode: "200"
-                  annotationCheck: "false"
-      container:
-        args:
-          - -file=/tmp/chaosengine-node-taint.yaml
-          - -saveName=/tmp/engine-name
-        image: litmuschaos/litmus-checker:latest
-    - name: pod-memory-hog
-      inputs:
-        artifacts:
-          - name: pod-memory-hog
-            path: /tmp/chaosengine-pod-memory-hog.yaml
+          - name: pod-delete
+            path: /tmp/chaosengine-pod-delete.yaml
             raw:
               data: |
                 apiVersion: litmuschaos.io/v1alpha1
                 kind: ChaosEngine
                 metadata:
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
-                  generateName: pod-memory-hog
+                  generateName: pod-delete
                   labels:
-                    instance_id: f0517cb6-17d5-40d2-99f3-8d376eeeeb07
-                    context: pod-memory-hog_litmus
+                    instance_id: 78e9a078-0a94-4e09-805d-16c21bf98949
+                    context: pod-delete_litmus
                 spec:
                   appinfo:
                     appns: pacman
@@ -474,20 +506,18 @@ spec:
                   engineState: active
                   chaosServiceAccount: litmus-admin
                   experiments:
-                    - name: pod-memory-hog
+                    - name: pod-delete
                       spec:
                         components:
                           env:
                             - name: TOTAL_CHAOS_DURATION
-                              value: "60"
-                            - name: MEMORY_CONSUMPTION
-                              value: "500"
+                              value: "30"
+                            - name: CHAOS_INTERVAL
+                              value: "10"
+                            - name: FORCE
+                              value: "false"
                             - name: PODS_AFFECTED_PERC
                               value: "60"
-                            - name: CONTAINER_RUNTIME
-                              value: docker
-                            - name: SOCKET_PATH
-                              value: /var/run/docker.sock
                         probe:
                           - name: appAlive
                             type: httpProbe
@@ -506,66 +536,7 @@ spec:
                   annotationCheck: "false"
       container:
         args:
-          - -file=/tmp/chaosengine-pod-memory-hog.yaml
-          - -saveName=/tmp/engine-name
-        image: litmuschaos/litmus-checker:latest
-    - name: pod-network-corruption
-      inputs:
-        artifacts:
-          - name: pod-network-corruption
-            path: /tmp/chaosengine-pod-network-corruption.yaml
-            raw:
-              data: |
-                apiVersion: litmuschaos.io/v1alpha1
-                kind: ChaosEngine
-                metadata:
-                  namespace: "{{workflow.parameters.adminModeNamespace}}"
-                  generateName: pod-network-corruption
-                  labels:
-                    instance_id: 279247fd-ebab-49f0-a3e0-c145daa56264
-                    context: pod-network-corruption_litmus
-                spec:
-                  jobCleanUpPolicy: retain
-                  engineState: active
-                  appinfo:
-                    appns: pacman
-                    applabel: name=pacman
-                    appkind: deployment
-                  chaosServiceAccount: litmus-admin
-                  experiments:
-                    - name: pod-network-corruption
-                      spec:
-                        components:
-                          env:
-                            - name: TOTAL_CHAOS_DURATION
-                              value: "60"
-                            - name: CONTAINER_RUNTIME
-                              value: docker
-                            - name: SOCKET_PATH
-                              value: /var/run/docker.sock
-                            - name: NETWORK_PACKET_CORRUPTION_PERCENTAGE
-                              value: "100"
-                            - name: PODS_AFFECTED_PERC
-                              value: ""
-                        probe:
-                          - name: appAlive
-                            type: httpProbe
-                            mode: Continuous
-                            runProperties:
-                              probeTimeout: 5
-                              retry: 5
-                              interval: 3
-                              stopOnFailure: false
-                            httpProbe/inputs:
-                              url: https://pacman.seladevops.com
-                              method:
-                                get:
-                                  criteria: ==
-                                  responseCode: "200"
-                  annotationCheck: "false"
-      container:
-        args:
-          - -file=/tmp/chaosengine-pod-network-corruption.yaml
+          - -file=/tmp/chaosengine-pod-delete.yaml
           - -saveName=/tmp/engine-name
         image: litmuschaos/litmus-checker:latest
     - name: pod-cpu-hog
@@ -581,7 +552,7 @@ spec:
                   namespace: "{{workflow.parameters.adminModeNamespace}}"
                   generateName: pod-cpu-hog
                   labels:
-                    instance_id: ea6dffe5-c0eb-430a-8150-22e39592e66e
+                    instance_id: cf13436f-91fb-4bda-ad8e-fedd14a9c6bb
                     context: pod-cpu-hog_litmus
                 spec:
                   jobCleanUpPolicy: retain
@@ -627,5 +598,136 @@ spec:
           - -file=/tmp/chaosengine-pod-cpu-hog.yaml
           - -saveName=/tmp/engine-name
         image: litmuschaos/litmus-checker:latest
+    - name: pod-network-corruption
+      inputs:
+        artifacts:
+          - name: pod-network-corruption
+            path: /tmp/chaosengine-pod-network-corruption.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  generateName: pod-network-corruption
+                  labels:
+                    instance_id: a5d74df3-7263-4b7b-82c9-828a41a3705e
+                    context: pod-network-corruption_litmus
+                spec:
+                  jobCleanUpPolicy: retain
+                  engineState: active
+                  appinfo:
+                    appns: pacman
+                    applabel: name=pacman
+                    appkind: deployment
+                  chaosServiceAccount: litmus-admin
+                  experiments:
+                    - name: pod-network-corruption
+                      spec:
+                        components:
+                          env:
+                            - name: TOTAL_CHAOS_DURATION
+                              value: "60"
+                            - name: CONTAINER_RUNTIME
+                              value: docker
+                            - name: SOCKET_PATH
+                              value: /var/run/docker.sock
+                            - name: NETWORK_PACKET_CORRUPTION_PERCENTAGE
+                              value: "100"
+                            - name: PODS_AFFECTED_PERC
+                              value: ""
+                        probe:
+                          - name: appAlive
+                            type: httpProbe
+                            mode: Continuous
+                            runProperties:
+                              probeTimeout: 5
+                              retry: 5
+                              interval: 3
+                              stopOnFailure: false
+                            httpProbe/inputs:
+                              url: https://pacman.seladevops.com
+                              method:
+                                get:
+                                  criteria: ==
+                                  responseCode: "200"
+                  annotationCheck: "false"
+      container:
+        args:
+          - -file=/tmp/chaosengine-pod-network-corruption.yaml
+          - -saveName=/tmp/engine-name
+        image: litmuschaos/litmus-checker:latest
+    - name: pod-memory-hog
+      inputs:
+        artifacts:
+          - name: pod-memory-hog
+            path: /tmp/chaosengine-pod-memory-hog.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  namespace: "{{workflow.parameters.adminModeNamespace}}"
+                  generateName: pod-memory-hog
+                  labels:
+                    instance_id: 66dc8497-9dd4-4e4a-b44a-7165df6e2296
+                    context: pod-memory-hog_litmus
+                spec:
+                  appinfo:
+                    appns: pacman
+                    applabel: name=pacman
+                    appkind: deployment
+                  jobCleanUpPolicy: retain
+                  engineState: active
+                  chaosServiceAccount: litmus-admin
+                  experiments:
+                    - name: pod-memory-hog
+                      spec:
+                        components:
+                          env:
+                            - name: TOTAL_CHAOS_DURATION
+                              value: "60"
+                            - name: MEMORY_CONSUMPTION
+                              value: "500"
+                            - name: PODS_AFFECTED_PERC
+                              value: "60"
+                            - name: CONTAINER_RUNTIME
+                              value: docker
+                            - name: SOCKET_PATH
+                              value: /var/run/docker.sock
+                        probe:
+                          - name: appAlive
+                            type: httpProbe
+                            mode: Continuous
+                            runProperties:
+                              probeTimeout: 5
+                              retry: 5
+                              interval: 3
+                              stopOnFailure: false
+                            httpProbe/inputs:
+                              url: https://pacman.seladevops.com
+                              method:
+                                get:
+                                  criteria: ==
+                                  responseCode: "200"
+                  annotationCheck: "false"
+      container:
+        args:
+          - -file=/tmp/chaosengine-pod-memory-hog.yaml
+          - -saveName=/tmp/engine-name
+        image: litmuschaos/litmus-checker:latest
+    - name: revert-chaos
+      container:
+        image: litmuschaos/k8s:latest
+        command:
+          - sh
+          - -c
+        args:
+          - "kubectl delete chaosengine -l 'instance_id in
+            (78e9a078-0a94-4e09-805d-16c21bf98949,
+            cf13436f-91fb-4bda-ad8e-fedd14a9c6bb,
+            a5d74df3-7263-4b7b-82c9-828a41a3705e,
+            66dc8497-9dd4-4e4a-b44a-7165df6e2296, )' -n
+            {{workflow.parameters.adminModeNamespace}} "
   podGC:
     strategy: OnWorkflowCompletion
