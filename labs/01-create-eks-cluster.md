@@ -20,7 +20,7 @@ eksctl completion bash >> ~/.bash_completion
 3. Define some variables for the cluster config
 ```
 CLUSTER_NAME=chaos
-AWS_REGION=ap-southeast-1
+AWS_REGION=eu-central-1
 
 ```
 
@@ -79,7 +79,7 @@ helm install monitoring prometheus-community/kube-prometheus-stack -n monitoring
 
 ### Cert Manager
 
-1. Add jetstack repository to your Helm repositories
+1. Add the jetstack repository to your Helm repositories
 ```
 helm repo add jetstack https://charts.jetstack.io
 ```
