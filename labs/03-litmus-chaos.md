@@ -243,7 +243,7 @@ In this Section we will configure a workflow with an experiment from the `Litmus
   ![chaos-hub](/images/chaos-hub-5.png)
 
 9. In order to see if an experiment is succesful or not we need to let Litmus know what is the `Steady State`. To do this we configure `probes`. For this experiment we will use a continuous probe which checks that issuing a request to the application returns HTTP code 200. Click on `Add a new probe` and configure like below:
-  ![chaos-hub](/images/chaos-hub-6.png)
+![chaos-hub](/images/chaos-hub-6.png)
 
 10. Tune the experiment according to your needs. In this case we want to delete 60 percent of the Pods
   ![chaos-hub](/images/chaos-hub-7.png)
